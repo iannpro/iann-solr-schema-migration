@@ -1,14 +1,14 @@
 {
   "author": "Irman Abdic",
-  "name": "iann-solr-scheme-migration",
-  "homepage": "https://github.com/iannpro/iann-solr-scheme-migration",
+  "name": "iann-solr-schema-migration",
+  "homepage": "https://github.com/iannpro/iann-solr-schema-migration",
   "version": "0.0.1",
   "repository": {
     "type": "git",
-    "url": "git@github.com:iannpro/iann-solr-scheme-migration.git"
+    "url": "git@github.com:iannpro/iann-solr-schema-migration.git"
   },
   "bugs": {
-    "url": "https://github.com/iannpro/iann-solr-scheme-migration/issues"
+    "url": "https://github.com/iannpro/iann-solr-schema-migration/issues"
   },
   "engines": {
     "node": ">= 0.10.22"
