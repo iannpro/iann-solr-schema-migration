@@ -1,0 +1,11 @@
+{
+  "name": "solr-scheme-migration",
+  "version": "0.0.1",
+  "dependencies": {
+    "angular": "~1.3.4",
+    "font-awesome": "~4.0.3"
+  },
+  "resolutions": {
+    "angular": "~1.3.4"
+  }
+}

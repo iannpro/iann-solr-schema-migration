@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="iann-solr">
+    <head>
+        <meta charset="utf-8">
+        <title>Solr schema migration</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="shortcut icon" href="assets/favicon.ico">
+        <link rel="stylesheet" type="text/css" href="<%= grunt.config.get('pkg.name') %>.css"/>
+    </head>
+    <body ng-controller="migrate">
+
+        <header>
+            <h1>Solr Schema Migration</h1>
+        </header>
+        <section>
+            {{init}}
+        </section>
+
+        <footer>
+        </footer>
+
+
+        <!-- Placed at the end of the document so the pages load faster -->
+        <script type="text/javascript" src="angular.js"></script>
+        <script type="text/javascript" src="<%= grunt.config.get('pkg.name') %>.js"></script>
+    </body>
+</html>

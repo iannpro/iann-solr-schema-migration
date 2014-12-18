@@ -1,0 +1,33 @@
+{
+  "author": "Irman Abdic",
+  "name": "iann-solr-scheme-migration",
+  "homepage": "https://github.com/iannpro/iann-solr-scheme-migration",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:iannpro/iann-solr-scheme-migration.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iannpro/iann-solr-scheme-migration/issues"
+  },
+  "engines": {
+    "node": ">= 0.10.22"
+  },
+  "devDependencies": {
+    "grunt": "*",
+    "grunt-contrib-clean": "*",
+    "grunt-contrib-copy": "*",
+    "grunt-contrib-jshint": "*",
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-connect": "~0.5.0",
+    "grunt-contrib-watch": "*",
+    "grunt-bower-concat": "~0.1.2",
+    "grunt-contrib-less": "~0.8.2",
+    "grunt-bumpup": "~0.4.2",
+    "grunt-tagrelease": "~0.2.1",
+    "shelljs": "~0.2.6",
+    "grunt-notify": "~0.2.16"
+  },
+  "dependencies": {}
+}
