@@ -20,57 +20,126 @@
 
         <div class="container" style="margin-top: 80px;">
             <div class="row">
-                <div class="col-xs-6">
 
-                    <div class="col-xs-12" style="margin-top: 10px;">
-                        <div class="col-xs-3">
+                <div class="col-xs-12" style="background: whitesmoke;">
+                    <div class="btn-group col-xs-12" style="margin: 20px 0 10px 0;">
+                        <label class="btn btn-success col-xs-4" ng-model="naviControl" btn-radio="'configure'">Configure</label>
+                        <label class="btn btn-success col-xs-4" ng-model="naviControl" btn-radio="'fetch'" ng-disabled="!validation.fetch">Fetch</label>
+                        <label class="btn btn-success col-xs-4" ng-model="naviControl" btn-radio="'migrate'" ng-disabled="!validation.fetch||!validation.migrate">Migrate</label>
+                    </div>
+                </div>
+
+                <div class="col-xs-6" style="background: whitesmoke;height: 500px;">
+
+
+                    <div id="configure" ng-show="naviControl==='configure'">
+                        <div class="col-xs-12" style="margin-top: 20px;">
                             <label>Solr Url</label>
+                            <input type="text"
+                                   ng-model="$storage.Url"
+                                   ng-change="validConfigure()"
+                                   class="form-control">
                         </div>
-                        <div class="col-xs-9">
-                            <input type="text" ng-model="$storage.Url" class="form-control">
+
+                        <div class="col-xs-12" style="margin-top: 20px;">
+
+                            <label>Old Schema Name</label>
+                            <input type="text"
+                                   ng-model="$storage.OldSchemaName"
+                                   ng-change="validConfigure()"
+                                   class="form-control">
+
+                        </div>
+
+                        <div class="col-xs-12" style="margin-top: 20px;">
+                            <label>New Schema Name</label>
+                            <input type="text"
+                                   ng-model="$storage.NewSchemaName"
+                                   ng-change="validConfigure()"
+                                   class="form-control">
+                        </div>
+
+
+                        <div class="col-xs-12" style="margin-top: 20px;">
+
+                            <label>Select XML file of the old schema</label>
+                            <input type="file"
+                                   fileread="file.Old"
+                                   class="form-control">
+
+                        </div>
+
+                        <div class="col-xs-12" style="margin-top: 20px;">
+
+                            <label>Select XML file of the new schema</label>
+                            <input type="file"
+                                   fileread="file.New"
+                                   class="form-control"
+                                   ng-disabled="!file.Old">
+
+                        </div>
+
+                        <div class="col-xs-12" style="margin-top: 20px;">
+                            <button type="button" class="btn btn-sm btn-success col-xs-12" ng-click="naviControl='fetch'" ng-disabled="!validation.fetch">Next</button>
+                        </div>
+
+                    </div>
+
+
+
+
+
+
+
+                    <div id="fetch" ng-show="naviControl==='fetch'">
+                        <div class="col-xs-12" style="margin-top: 20px;">
+                            <div class="col-xs-12" style="margin-top: 20px;">
+                                <div class="col-xs-6">
+                                    <label>Fetched items</label>
+                                    <h2 style="margin-top: 10px;">
+                                        {{data.numFound}}
+                                    </h2>
+                                </div>
+                                <div class="col-xs-6">
+
+                                </div>
+                            </div>
+                            <div class="col-xs-12" style="margin-top: 20px;">
+                                <button type="button" class="btn btn-sm btn-success col-xs-12" ng-click="function.select()">Fetch</button>
+                            </div>
+
                         </div>
                     </div>
 
-                    <div class="col-xs-12" style="margin-top: 10px;">
-                        <div class="col-xs-6">
-                            <label>New Schema</label>
-                            <input type="text" ng-model="$storage.NewSchemaName" class="form-control">
+
+                    <div id="migrate" ng-show="naviControl==='migrate'">
+                        <div class="col-xs-12" style="margin: 30px 0 20px 0;">
+
+                            <button type="button" class="btn btn-sm btn-danger col-xs-12" ng-disabled="data.numFound===0" ng-click="function.migrate()">Migrate</button>
                         </div>
 
-                        <div class="col-xs-6">
-                            <label>Old Schema</label>
-                            <input type="text" ng-model="$storage.OldSchemaName" class="form-control">
+                        <div class="col-xs-12" style="margin: 30px 0 20px 0;">
+                            <progressbar class="progress-striped active" value="progressCompleted" type="danger">{{progressCompleted+'%'}}</progressbar>
                         </div>
                     </div>
 
-                    <div class="col-xs-12" style="margin-top: 10px;">
-                        <div class="col-xs-6">
-                            <label>New Schema File</label>
-                            <input type="file" fileread="file.New" class="form-control">
-                        </div>
 
-                        <div class="col-xs-6">
-                            <label>Old Schema File</label>
-                            <input type="file" fileread="file.Old" class="form-control">
-                        </div>
-                    </div>
 
-                    <div class="col-xs-12" style="margin-top: 20px;">
-                        <div class="col-xs-6"></div>
-                        <div class="col-xs-6">
-                            <button type="button" class="btn btn-sm btn-info" ng-click="function.select()">Fetch Old Entries</button>
-                        </div>
-                    </div>
+
+
 
                 </div>
-                <div class="col-xs-6">
+
+                <div class="col-xs-6" style="background: whitesmoke; height: 500px;padding: 20px 0 20px 0;overflow-y: scroll;">
                     <div class="col-xs-12" ng-repeat="newName in schema.New">
                         <div class="col-xs-6">
-                            <label>{{ newName }}</label>
+                            <label>{{ newName.name }}</label>
                         </div>
                         <div class="col-xs-6">
-                            <select>
-                                <option disabled>Select name</option>
+                            <select ng-options="item.value as item.name for item in schema.Old"
+                                    ng-model="newName.oldName"
+                                    class="form-control">
+                                <option>Select name</option>
                             </select>
                         </div>
                     </div>

@@ -29,19 +29,33 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         });
 
         $scope.file = {};
-        $scope.schema = { 
+        $scope.function = {};
+        $scope.data = {
+            docs: [],
+            numFound: 0
+        };
+        $scope.schema = {
             New: [],
             Old: []
         };
+        $scope.naviControl = "configure";
+        $scope.validation = {
+            fetch: false,
+            migrate: false
+        };
+        $scope.oldIgnoreList = []; // will be filled after changing select values
 
         var getSchemeNames = function(fields) {
             var result = [];
-
             angular.forEach(fields, function(f, i) {
                 var field = angular.element(f);
                 var name = field.attr('name');
                 if ($scope.$storage.ignore.indexOf(name)===-1) {
-                    result.push(name);
+                    var entry = {
+                        name: name,
+                        value: name
+                    };
+                    result.push(entry);
                 }
             });
             return result;
@@ -57,6 +71,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 var xml = xmlFilter(value);
                 var fields = xml.find('field');
                 $scope.schema.New = getSchemeNames(fields);
+                $scope.validConfigure();
             }
         , true);
 
@@ -65,20 +80,116 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 var xml = xmlFilter(value);
                 var fields = xml.find('field');
                 $scope.schema.Old = getSchemeNames(fields);
+                $scope.validConfigure();
+                console.log($scope.schema);
             }
             , true);
 
-        $scope.function = {};
+        $scope.validConfigure = function() {
+            var result = false;
+            if ($scope.$storage.Url &&
+                $scope.$storage.NewSchemaName &&
+                $scope.$storage.OldSchemaName &&
+                $scope.file.New &&
+                $scope.file.Old) {
+                result = true;
+            }
+            $scope.validation.fetch = result;
+        };
+
+        $scope.validFetch = function() {
+            var result = false;
+            if ($scope.data.numFound>0) {
+                result = true;
+            }
+            $scope.validation.migrate = result;
+        };
+
+        $scope.$watch('naviControl',
+            function(value) {
+                console.log(value);
+                switch(value) {
+                    case "configure":
+                            $scope.validConfigure();
+                        break;
+                    case "fetch":
+                            $scope.validFetch();
+                        break;
+                    case "migrate":
+                        break;
+                }
+            });
+
+        $scope.$watch('data',
+            function(value) {
+
+                $scope.validFetch();
+            }, true);
+/*
+        $scope.updateIgnoreList = function(items) {
+            var result = [];
+            angular.forEach(items, function(item, index){
+                if (item.oldName) {
+                    result.push(item.oldName);
+                }
+            });
+            $scope.oldIgnoreList = result;
+        };
+*/
 
         $scope.function.select = function() {
+
             $http.get(getSelectUrl($scope.$storage)).
                 success(function(data, status, headers, config) {
-                    console.log(data);
+                    $scope.data = data.response;
                 }).
                 error(function(data, status, headers, config) {
-                    // called asynchronously if an error occurs
-                    // or server returns response with an error status.
+
                 });
+        };
+
+        $scope.migrateVars = {
+            progressCompleted: 0,
+            progressCounter: null,
+            pause: false,
+            complete: true
+        };
+        $scope.progressCompleted = 0;
+        $scope.progressCounter = null;
+
+        $scope.$watch('progressCounter',
+            function(value) {
+                if (value!==0 || $scope.data.numFound!==0) {
+                    $scope.progressCompleted = Math.round((value / $scope.data.numFound)*100);
+                }
+                console.log("progress "+value);
+                if (!isNaN(value) && (value<$scope.data.numFound-1)) {
+                    if (!$scope.migrateVars.pause) {
+                        $http.get(getSelectUrl($scope.$storage)).
+                            success(function(data, status, headers, config) {
+                                $scope.data = data.response;
+                                $scope.progressCounter++;
+                            }).
+                            error(function(data, status, headers, config) {
+                                $scope.progressCounter++;
+                            });
+                    }
+
+                }
+            });
+
+
+
+        $scope.function.migrate = function() {
+            $scope.progressCounter = 0;
+            //angular.forEach($scope.data.docs, function(doc, index) {
+            $scope.migrateVars.pause = false;
+
+        };
+
+        $scope.pauseMigration = function() {
+            $scope.migrateVars.pause = !$scope.migrateVars.pause;
+
         };
 
     }]);
