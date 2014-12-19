@@ -112,6 +112,11 @@ module.exports = function(grunt) {
                     src: 'src/favicon.ico',
                     flatten: true,
                     expand: true
+                }, {
+                    dest: '<%= distdir %>/assets/',
+                    src: 'bower_components/bootstrap/dist/css/*',
+                    flatten: true,
+                    expand: true
                 }]
             }
         },
@@ -133,7 +138,10 @@ module.exports = function(grunt) {
             },
             angular: {
                 src:[
-                    'bower_components/angular/angular.js'
+                    'bower_components/angular/angular.js',
+                    'bower_components/ngstorage/ngStorage.js',
+                    'bower_components/angular-xml/angular-xml.js',
+                    'bower_components/angular-bootstrap/ui-bootstrap.js'
                 ],
                 dest: '<%= distdir %>/angular.js'
             }
@@ -150,7 +158,7 @@ module.exports = function(grunt) {
         watch:{
             all: {
                 files: [
-                    '<%= src.js %>', '<%= src.lessWatch %>',
+                    '<%= src.js %>', '<%= src.lessWatch %>', 'src/app/src.js',
                     '<%= src.tpl.app %>', '<%= src.tpl.common %>', '<%= src.html %>'
                 ],
                 tasks:['default','timestamp']
