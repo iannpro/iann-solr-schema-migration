@@ -1,5 +1,7 @@
 angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
+    .constant("BLOCK_SIZE", 100)
+
     .directive("fileread", [function () {
         return {
             scope: {
@@ -19,10 +21,10 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         }
     }])
 
-    .controller('migrate', ['$scope', '$localStorage', '$http', 'xmlFilter', function($scope, $localStorage, $http, xmlFilter) {
+    .controller('migrate', ['$scope', '$localStorage', '$http', 'xmlFilter', 'BLOCK_SIZE', function($scope, $localStorage, $http, xmlFilter, BLOCK_SIZE) {
 
         $scope.$storage = $localStorage.$default({
-            Url: "http://192.168.2.106:8983/solr/",
+            Url: "http://192.168.2.106/php-scripts/",
             NewSchemaName: "iann-sasi",
             OldSchemaName: "iann",
             ignore: ['id', '_version_', 'text']
@@ -62,8 +64,19 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         };
 
         var getSelectUrl = function(o) {
-            return "http://192.168.2.106/php-scripts/select.php";
-            //return o.Url+o.OldSchemaName + "/select?q=*%3A*&wt=json&indent=true&rows=2147483647";
+            return o.Url+"select.php";
+        };
+
+        var getSaveUrl = function(o, s) {
+            return o.Url+"save.php?content="+JSON.stringify(s);
+        };
+
+        var getUpdateUrl = function(o, n) {
+            return o.Url+"update.php?filename="+n;
+        };
+
+        var getPercentage = function(current, all) {
+            return Math.round((current / all)*100);
         };
 
         $scope.$watch('file.New',
@@ -150,38 +163,88 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
         $scope.migrateVars = {
             progressCompleted: 0,
-            progressCounter: null,
-            pause: false,
-            complete: true
+            progressCounter: null
         };
-        $scope.progressCompleted = 0;
-        $scope.progressCounter = null;
 
-        $scope.$watch('progressCounter',
+
+
+        $scope.$watch('migrateVars.progressCounter',
             function(value) {
-                if (value!==0 || $scope.data.numFound!==0) {
-                    $scope.progressCompleted = Math.round((value / $scope.data.numFound)*100);
+                if (value || $scope.data.numFound>0) {
+                    $scope.migrateVars.progressCompleted = getPercentage(value, $scope.data.numFound);
                 }
                 console.log("progress "+value);
                 if (!isNaN(value) && (value<$scope.data.numFound-1)) {
-                    if (!$scope.migrateVars.pause) {
-                        $http.get(getSelectUrl($scope.$storage)).
-                            success(function(data, status, headers, config) {
-                                $scope.data = data.response;
-                                $scope.progressCounter++;
-                            }).
-                            error(function(data, status, headers, config) {
-                                $scope.progressCounter++;
-                            });
-                    }
+
+                    $http.get(getSelectUrl($scope.$storage)).
+                        success(function(data, status, headers, config) {
+                            $scope.data = data.response;
+                            $scope.migrateVars.progressCounter++;
+                        }).
+                        error(function(data, status, headers, config) {
+                            $scope.migrateVars.progressCounter++;
+                        });
 
                 }
             });
 
 
+        $scope.saveVars = {
+            progressCompleted: 0,
+            progressCounter: null,
+            savedNames: [],
+            saved: []
+        };
+
+        var getSaveBlocksNr = function (all) {
+            var size = BLOCK_SIZE;
+            var result = [];
+
+            for (var i = 1; i<(Math.floor(all / size)+1); i++) {
+                result.push(i*size);
+            }
+            var rest = all % size;
+            if (rest>0) {
+                result.push(all);
+            }
+            return result;
+        };
+
+        var getSaveBlock = function (nr, docs) {
+            var rest = nr % BLOCK_SIZE;
+            var size = (rest === 0) ? BLOCK_SIZE : rest;
+            var result = [];
+
+            for (var i = (nr-size); i<nr; i++) {
+                result.push(docs[i]);
+            }
+
+            return result;
+        };
+
+        $scope.function.save = function () {
+
+            var blocks = getSaveBlocksNr($scope.data.numFound);
+
+            angular.forEach(blocks, function (block) {
+                var b = getSaveBlock(block, $scope.data.docs);
+                //TODO: get block
+            });
+
+            var send = '{"id":"ikica","title":"iki1"}';
+            $http.get(getSaveUrl($scope.$storage, send)).
+                success(function(data, status, headers, config) {
+                    console.log(data);
+                }).
+                error(function(data, status, headers, config) {
+                    console.log([data,status]);
+                });
+
+        };
+
 
         $scope.function.migrate = function() {
-            $scope.progressCounter = 0;
+            $scope.migrateVars.progressCounter = 0;
             //angular.forEach($scope.data.docs, function(doc, index) {
             $scope.migrateVars.pause = false;
 
