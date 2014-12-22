@@ -1,6 +1,6 @@
 angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
-    .constant("BLOCK_SIZE", 100)
+    .constant("BLOCK_SIZE", 5)
 
     .directive("fileread", [function () {
         return {
@@ -21,12 +21,10 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         }
     }])
 
-    .controller('migrate', ['$scope', '$localStorage', '$http', 'xmlFilter', 'BLOCK_SIZE', function($scope, $localStorage, $http, xmlFilter, BLOCK_SIZE) {
+    .controller('migrate', ['$scope', '$localStorage', '$http', 'xmlFilter', 'BLOCK_SIZE', '$timeout', function($scope, $localStorage, $http, xmlFilter, BLOCK_SIZE, $timeout) {
 
         $scope.$storage = $localStorage.$default({
             Url: "http://192.168.2.106/php-scripts/",
-            NewSchemaName: "iann-sasi",
-            OldSchemaName: "iann",
             ignore: ['id', '_version_', 'text']
         });
 
@@ -47,7 +45,17 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         };
         $scope.oldIgnoreList = []; // will be filled after changing select values
 
-        var getSchemeNames = function(fields) {
+        var equalValues = function (o, v) {
+            var result = false;
+            angular.forEach(o, function (old) {
+                if (old.value === v) {
+                    result = true;
+                }
+            });
+            return result;
+        };
+
+        var getSchemeNames = function(fields, oldlist) {
             var result = [];
             angular.forEach(fields, function(f, i) {
                 var field = angular.element(f);
@@ -57,6 +65,10 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                         name: name,
                         value: name
                     };
+                    if (equalValues(oldlist, entry.value)) {
+                        //TODO: assign oldName to entry
+                        entry.oldName = name;
+                    }
                     result.push(entry);
                 }
             });
@@ -67,7 +79,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return o.Url+"select.php";
         };
 
-        var getSaveUrl = function(o, s) {
+        var getSaveUrl = function(o, s, b) {
             return o.Url+"save.php?content="+JSON.stringify(s);
         };
 
@@ -83,7 +95,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             function(value) {
                 var xml = xmlFilter(value);
                 var fields = xml.find('field');
-                $scope.schema.New = getSchemeNames(fields);
+                $scope.schema.New = getSchemeNames(fields, $scope.schema.Old);
                 $scope.validConfigure();
             }
         , true);
@@ -101,8 +113,6 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         $scope.validConfigure = function() {
             var result = false;
             if ($scope.$storage.Url &&
-                $scope.$storage.NewSchemaName &&
-                $scope.$storage.OldSchemaName &&
                 $scope.file.New &&
                 $scope.file.Old) {
                 result = true;
@@ -191,54 +201,63 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
         $scope.saveVars = {
             progressCompleted: 0,
-            progressCounter: null,
-            savedNames: [],
+            counter: undefined,
+            locked: false,
             saved: []
         };
 
-        var getSaveBlocksNr = function (all) {
-            var size = BLOCK_SIZE;
-            var result = [];
 
-            for (var i = 1; i<(Math.floor(all / size)+1); i++) {
-                result.push(i*size);
+
+        var tick = function () {
+            if ($scope.saveVars.counter < $scope.data.numFound-1) {
+                $scope.saveVars.counter++;
+            } else {
+                $scope.saveVars.locked = false;
             }
-            var rest = all % size;
-            if (rest>0) {
-                result.push(all);
-            }
-            return result;
         };
 
-        var getSaveBlock = function (nr, docs) {
-            var rest = nr % BLOCK_SIZE;
-            var size = (rest === 0) ? BLOCK_SIZE : rest;
-            var result = [];
+        $scope.$watch('saveVars.counter',
+            function(value) {
 
-            for (var i = (nr-size); i<nr; i++) {
-                result.push(docs[i]);
-            }
+                if (!isNaN(value)) {
+                    var send = $scope.data.docs[value];
+                    console.log([value, send]);
 
-            return result;
-        };
+                    $http.get(getSaveUrl($scope.$storage, send)).
+                        success(function(data, status, headers, config) {
+                            $scope.saveVars.saved.push(send.id);
+                            tick();
+                        }).
+                        error(function(data, status, headers, config) {
+                            tick();
+                        });
+
+                } else {
+                    console.log("saveVars.counter is: "+value);
+                }
+            });
+
+
+        $scope.$watch('saveVars.counter',
+            function(value) {
+                if (!isNaN(value)) {
+                    $scope.saveVars.progressCompleted = getPercentage(value, $scope.data.numFound);
+                }
+            });
 
         $scope.function.save = function () {
 
-            var blocks = getSaveBlocksNr($scope.data.numFound);
+            if ($scope.saveVars.locked) {
+                $scope.saveVars.counter = undefined;
+                $scope.saveVars.progressCompleted = 0;
+                $scope.saveVars.saved = [];
+            } else {
+                $scope.saveVars.saved = [];
+                $scope.saveVars.counter = 0;
+            }
 
-            angular.forEach(blocks, function (block) {
-                var b = getSaveBlock(block, $scope.data.docs);
-                //TODO: get block
-            });
+            $scope.saveVars.locked = !$scope.saveVars.locked;
 
-            var send = '{"id":"ikica","title":"iki1"}';
-            $http.get(getSaveUrl($scope.$storage, send)).
-                success(function(data, status, headers, config) {
-                    console.log(data);
-                }).
-                error(function(data, status, headers, config) {
-                    console.log([data,status]);
-                });
 
         };
 
