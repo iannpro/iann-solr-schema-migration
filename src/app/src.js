@@ -171,6 +171,22 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 });
         };
 
+        // TODO: unconsistent types
+        var isUnconsistent = function (value) {
+            return false;
+        };
+
+        $scope.getClass = function (value) {
+            if (!value.oldName) {
+                return "empty";
+            } else if (isUnconsistent(value)) {
+                return "unconsistent";
+            } else {
+                return "ok";
+            }
+        };
+
+
         $scope.migrateVars = {
             progressCompleted: 0,
             progressCounter: null
@@ -262,10 +278,19 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         };
 
 
+
         $scope.function.migrate = function() {
-            $scope.migrateVars.progressCounter = 0;
+            //$scope.migrateVars.progressCounter = 0;
             //angular.forEach($scope.data.docs, function(doc, index) {
-            $scope.migrateVars.pause = false;
+            //$scope.migrateVars.pause = false;
+
+            $http.get(getUpdateUrl($scope.$storage, "760cd11b-241c-4d38-b2b1-bcb2ff2863df")).
+                success(function(data, status, headers, config) {
+                    console.log(data);
+                }).
+                error(function(data, status, headers, config) {
+
+                });
 
         };
 

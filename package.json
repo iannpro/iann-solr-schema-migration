@@ -2,7 +2,7 @@
   "author": "Irman Abdic",
   "name": "iann-solr-schema-migration",
   "homepage": "https://github.com/iannpro/iann-solr-schema-migration",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "repository": {
     "type": "git",
     "url": "git@github.com:iannpro/iann-solr-schema-migration.git"
