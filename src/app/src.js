@@ -1,6 +1,12 @@
 angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
-    .constant("BLOCK_SIZE", 5)
+    .constant("CONST", {
+        xmlTypes: {
+            boolean: ['boolean'],
+            number: ['long', 'double'],
+            string: ['text', 'string', 'text_lowercase', 'tdate']
+        }
+    })
 
     .directive("fileread", [function () {
         return {
@@ -21,11 +27,47 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         }
     }])
 
-    .controller('migrate', ['$scope', '$localStorage', '$http', 'xmlFilter', 'BLOCK_SIZE', '$timeout', function($scope, $localStorage, $http, xmlFilter, BLOCK_SIZE, $timeout) {
+    .factory('$transform', ['CONST', function(CONST) {
+        var functions = {};
+
+        functions.getType = function(value) {
+            var type = typeof value;
+            if (type === 'object' && Array.isArray(value)) {
+                type = 'array';
+            }
+            return type;
+        };
+
+        functions.getXmlType = function(type, multiValued) {
+            var text = [];
+
+            if (multiValued) {
+                text.push('array');
+            }
+
+            if (CONST.xmlTypes.string.indexOf(type)!==-1) {
+                text.push('string')
+            } else if (CONST.xmlTypes.number.indexOf(type)!==-1) {
+                text.push('number');
+            } else if (CONST.xmlTypes.boolean.indexOf(type)!==-1) {
+                text.push('boolean');
+            }
+
+            return text;
+        };
+
+        functions.intToStr = function() {
+
+        };
+
+        return functions;
+    }])
+
+    .controller('migrate', ['$scope', '$localStorage', '$http', 'xmlFilter', '$timeout', '$transform', function($scope, $localStorage, $http, xmlFilter, $timeout, $transform) {
 
         $scope.$storage = $localStorage.$default({
             Url: "http://192.168.2.106/php-scripts/",
-            ignore: ['id', '_version_', 'text']
+            ignore: ['_version_', 'text']
         });
 
         $scope.file = {};
@@ -60,10 +102,13 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             angular.forEach(fields, function(f, i) {
                 var field = angular.element(f);
                 var name = field.attr('name');
+                var multiValued = field.attr('multiValued');
+                var type = field.attr('type');
                 if ($scope.$storage.ignore.indexOf(name)===-1) {
                     var entry = {
                         name: name,
-                        value: name
+                        value: name,
+                        type: $transform.getXmlType(type, multiValued)
                     };
                     if (equalValues(oldlist, entry.value)) {
                         //TODO: assign oldName to entry
@@ -91,6 +136,12 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return Math.round((current / all)*100);
         };
 
+        $scope.$watch('schema',
+            function(value) {
+                console.log($scope.schema);
+            }
+            , true);
+
         $scope.$watch('file.New',
             function(value) {
                 var xml = xmlFilter(value);
@@ -106,7 +157,6 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 var fields = xml.find('field');
                 $scope.schema.Old = getSchemeNames(fields);
                 $scope.validConfigure();
-                console.log($scope.schema);
             }
             , true);
 
@@ -130,7 +180,6 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
         $scope.$watch('naviControl',
             function(value) {
-                console.log(value);
                 switch(value) {
                     case "configure":
                             $scope.validConfigure();
@@ -148,17 +197,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
                 $scope.validFetch();
             }, true);
-/*
-        $scope.updateIgnoreList = function(items) {
-            var result = [];
-            angular.forEach(items, function(item, index){
-                if (item.oldName) {
-                    result.push(item.oldName);
-                }
-            });
-            $scope.oldIgnoreList = result;
-        };
-*/
+
 
         $scope.function.select = function() {
 
@@ -171,16 +210,40 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 });
         };
 
-        // TODO: unconsistent types
+        var arraysEqual = function(a1, a2) {
+            console.log([a1, a2]);
+            if (typeof a1 !== typeof a2) return false;
+            if (a1.length !== a2.length) return false;
+
+            var result = false;
+            angular.forEach(a1, function (o1) {
+                angular.forEach(a2, function (o2) {
+                    if (o1 === o2) {
+                        result = true;
+                    }
+                });
+            });
+
+            return result;
+        };
+
         var isUnconsistent = function (value) {
-            return false;
+            var result = false;
+            angular.forEach($scope.schema.Old, function (el) {
+                if (value.oldName === el.name) {
+                    if (!arraysEqual(el.type, value.type)) {
+                        result = true;
+                    }
+                }
+            });
+            return result;
         };
 
         $scope.getClass = function (value) {
             if (!value.oldName) {
                 return "empty";
             } else if (isUnconsistent(value)) {
-                return "unconsistent";
+                return "conditional-unconsistent";
             } else {
                 return "ok";
             }
@@ -237,7 +300,6 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
                 if (!isNaN(value)) {
                     var send = $scope.data.docs[value];
-                    console.log([value, send]);
 
                     $http.get(getSaveUrl($scope.$storage, send)).
                         success(function(data, status, headers, config) {
