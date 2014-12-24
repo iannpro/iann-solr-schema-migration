@@ -56,8 +56,99 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return text;
         };
 
-        functions.intToStr = function() {
+        functions.transform = function (data, obj) {
 
+            if (data[obj.oldName]) {
+                var result;
+                var type = functions.getType(data[obj.oldName]);
+
+                // TODO: does not check values inside array if they correspond to target object
+                if (obj.type.indexOf('array')!==-1) {
+                    if (type === 'array') {
+                        result = data[obj.oldName];
+                    } else {
+                        result = [];
+                        result.push(data[obj.oldName]);
+                    }
+                }
+                // TODO: does not transform other types to object (default = {})
+                else if (obj.type.indexOf('object')!==-1) {
+                    if (type === 'object') {
+                        result = data[obj.oldName];
+                    } else {
+                        result = {};
+                    }
+                }
+                // TODO: does not transform objects and arrays to number (default = 0)
+                else if (obj.type.indexOf('number')!==-1) {
+                    if (type === 'number') {
+                        result = data[obj.oldName];
+                    } else if (type === 'string'){
+                        result = parseFloat(data[obj.oldName]);
+                    } else if (type === 'boolean') {
+                        result = (data[obj.oldName]>0)?1:0;
+                    } else {
+                        result = 0;
+                    }
+                }
+                // TODO: does not transform objects, arrays and numbers to boolean (default = false)
+                else if (obj.type.indexOf('boolean')!==-1) {
+                    if (type === 'boolean') {
+                        result = data[obj.oldName];
+                    } else if (type === 'string'){
+                        result = (data[obj.oldName] === 'true');
+                    } else {
+                        result = false;
+                    }
+                } else if (obj.type.indexOf('string')!==-1) {
+                    if (type === 'string') {
+                        result = data[obj.oldName];
+                    } else if (type === 'number' || type === 'boolean'){
+                        result = data[obj.oldName].toString();
+                    } else if (type === 'array' || type === 'object') {
+                        result = "";
+                        angular.forEach(data[obj.oldName], function (el) {
+                            result+= el + " ";
+                        });
+                    } else {
+                        result = "";
+                    }
+                }
+                return result;
+                //return data[obj.oldName];
+            } else {
+                return functions.getEmptyValue(obj.type);
+            }
+
+
+        };
+
+        functions.getEmptyValue = function (value) {
+            var result = "";
+            if (value.indexOf('array')!==-1) {
+                result = [];
+            } else if (value.indexOf('object')!==-1) {
+                result = {};
+            } else if (value.indexOf('number')!==-1) {
+                result = 0;
+            } else if (value.indexOf('boolean')!==-1) {
+                result = false;
+            } else if (value.indexOf('string')!==-1) {
+                result = "";
+            }
+            return result;
+        };
+
+        functions.assign = function (data, schema) {
+            var result = {};
+            angular.forEach(schema, function(value) {
+                if (value.oldName) {
+                    result[value.name] = functions.transform(data, value);
+                } else {
+                    result[value.name] = functions.getEmptyValue(value.type);
+                }
+            });
+            return result;
         };
 
         return functions;
@@ -67,7 +158,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
         $scope.$storage = $localStorage.$default({
             Url: "http://192.168.2.106/php-scripts/",
-            ignore: ['_version_', 'text']
+            ignore: ['_version_']
         });
 
         $scope.file = {};
@@ -111,7 +202,6 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                         type: $transform.getXmlType(type, multiValued)
                     };
                     if (equalValues(oldlist, entry.value)) {
-                        //TODO: assign oldName to entry
                         entry.oldName = name;
                     }
                     result.push(entry);
@@ -124,7 +214,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return o.Url+"select.php";
         };
 
-        var getSaveUrl = function(o, s, b) {
+        var getSaveUrl = function(o, s) {
             return o.Url+"save.php?content="+JSON.stringify(s);
         };
 
@@ -211,7 +301,6 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         };
 
         var arraysEqual = function(a1, a2) {
-            console.log([a1, a2]);
             if (typeof a1 !== typeof a2) return false;
             if (a1.length !== a2.length) return false;
 
@@ -299,7 +388,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             function(value) {
 
                 if (!isNaN(value)) {
-                    var send = $scope.data.docs[value];
+                    var send = $transform.assign($scope.data.docs[value], $scope.schema.New);
 
                     $http.get(getSaveUrl($scope.$storage, send)).
                         success(function(data, status, headers, config) {
@@ -309,6 +398,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                         error(function(data, status, headers, config) {
                             tick();
                         });
+
 
                 } else {
                     console.log("saveVars.counter is: "+value);
