@@ -84,7 +84,10 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 }
                 // TODO: does not transform other types to date (default 'undefined')
                 else if (obj.type.indexOf('date')!==-1) {
-                    // do nothing... result = undefined;
+                    if (type === 'string'){
+                        if (data[obj.oldName]) result = data[obj.oldName];
+                    }
+                    // else do nothing... result = undefined;
                 }
                 // TODO: does not transform objects and arrays to number (default = 0)
                 else if (obj.type.indexOf('number')!==-1) {
@@ -108,7 +111,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                         result = false;
                     }
                 } else if (obj.type.indexOf('string')!==-1) {
-                    if (type === 'string' || type === 'date') {
+                    if (type === 'string') {
                         result = data[obj.oldName];
                     } else if (type === 'number' || type === 'boolean'){
                         result = data[obj.oldName].toString();
@@ -350,32 +353,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         };
 
 
-        $scope.migrateVars = {
-            progressCompleted: 0,
-            progressCounter: null
-        };
 
-
-
-        $scope.$watch('migrateVars.progressCounter',
-            function(value) {
-                if (value || $scope.data.numFound>0) {
-                    $scope.migrateVars.progressCompleted = getPercentage(value, $scope.data.numFound);
-                }
-                console.log("progress "+value);
-                if (!isNaN(value) && (value<$scope.data.numFound-1)) {
-
-                    $http.get(getSelectUrl($scope.$storage)).
-                        success(function(data, status, headers, config) {
-                            $scope.data = data.response;
-                            $scope.migrateVars.progressCounter++;
-                        }).
-                        error(function(data, status, headers, config) {
-                            $scope.migrateVars.progressCounter++;
-                        });
-
-                }
-            });
 
 
         $scope.saveVars = {
@@ -387,7 +365,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
 
 
-        var tick = function () {
+        var tickSave = function () {
             if ($scope.saveVars.counter < $scope.data.numFound-1) {
                 $scope.saveVars.counter++;
             } else {
@@ -404,10 +382,10 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                     $http.get(getSaveUrl($scope.$storage, send)).
                         success(function(data, status, headers, config) {
                             $scope.saveVars.saved.push(send.id);
-                            tick();
+                            tickSave();
                         }).
                         error(function(data, status, headers, config) {
-                            tick();
+                            tickSave();
                         });
 
 
@@ -428,8 +406,8 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
 
             if ($scope.saveVars.locked) {
                 $scope.saveVars.counter = undefined;
-                $scope.saveVars.progressCompleted = 0;
                 $scope.saveVars.saved = [];
+                $scope.saveVars.progressCompleted = 0;
             } else {
                 $scope.saveVars.saved = [];
                 $scope.saveVars.counter = 0;
@@ -441,26 +419,66 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         };
 
 
+        $scope.migrateVars = {
+            progressCompleted: 0,
+            counter: undefined,
+            locked: false,
+            saved: []
+        };
+
+        var tickMigrate = function () {
+            if ($scope.migrateVars.counter < $scope.data.numFound-1) {
+                $scope.migrateVars.counter++;
+            } else {
+                $scope.migrateVars.locked = false;
+            }
+        };
+
+
+        $scope.$watch('migrateVars.counter',
+            function(value) {
+
+                if (!isNaN(value)) {
+                    var send = $scope.saveVars.saved[$scope.migrateVars.counter];
+
+                    $http.get(getUpdateUrl($scope.$storage, send)).
+                        success(function(data, status, headers, config) {
+                            $scope.migrateVars.saved.push(send.id);
+                            tickMigrate();
+                        }).
+                        error(function(data, status, headers, config) {
+                            tickMigrate();
+                        });
+
+                } else {
+                    console.log("migrateVars.counter is: "+value);
+                }
+            });
+
+
+        $scope.$watch('migrateVars.counter',
+            function(value) {
+                if (!isNaN(value)) {
+                    $scope.migrateVars.progressCompleted = getPercentage(value, $scope.saveVars.saved.length);
+                }
+            });
+
 
         $scope.function.migrate = function() {
-            //$scope.migrateVars.progressCounter = 0;
-            //angular.forEach($scope.data.docs, function(doc, index) {
-            //$scope.migrateVars.pause = false;
 
-            $http.get(getUpdateUrl($scope.$storage, "760cd11b-241c-4d38-b2b1-bcb2ff2863df")).
-                success(function(data, status, headers, config) {
-                    console.log(data);
-                }).
-                error(function(data, status, headers, config) {
+            if ($scope.migrateVars.locked) {
+                $scope.migrateVars.counter = undefined;
+                $scope.migrateVars.saved = [];
+                $scope.migrateVars.progressCompleted = 0;
+            } else {
+                $scope.migrateVars.saved = [];
+                $scope.migrateVars.counter = 0;
+            }
 
-                });
-
-        };
-
-        $scope.pauseMigration = function() {
-            $scope.migrateVars.pause = !$scope.migrateVars.pause;
+            $scope.migrateVars.locked = !$scope.migrateVars.locked;
 
         };
+
 
     }]);
 
