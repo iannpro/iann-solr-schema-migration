@@ -4,7 +4,8 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         xmlTypes: {
             boolean: ['boolean'],
             number: ['long', 'double'],
-            string: ['text', 'string', 'text_lowercase', 'tdate']
+            string: ['text', 'string', 'text_lowercase'],
+            date: ['tdate']
         }
     })
 
@@ -51,6 +52,8 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 text.push('number');
             } else if (CONST.xmlTypes.boolean.indexOf(type)!==-1) {
                 text.push('boolean');
+            } else if (CONST.xmlTypes.date.indexOf(type)!==-1) {
+                text.push('date');
             }
 
             return text;
@@ -59,7 +62,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         functions.transform = function (data, obj) {
 
             if (data[obj.oldName]) {
-                var result;
+                var result = undefined;
                 var type = functions.getType(data[obj.oldName]);
 
                 // TODO: does not check values inside array if they correspond to target object
@@ -79,6 +82,10 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                         result = {};
                     }
                 }
+                // TODO: does not transform other types to date (default 'undefined')
+                else if (obj.type.indexOf('date')!==-1) {
+                    // do nothing... result = undefined;
+                }
                 // TODO: does not transform objects and arrays to number (default = 0)
                 else if (obj.type.indexOf('number')!==-1) {
                     if (type === 'number') {
@@ -87,7 +94,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                         result = parseFloat(data[obj.oldName]);
                     } else if (type === 'boolean') {
                         result = (data[obj.oldName]>0)?1:0;
-                    } else {
+                    } else { // date cannot be converted to number
                         result = 0;
                     }
                 }
@@ -101,7 +108,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                         result = false;
                     }
                 } else if (obj.type.indexOf('string')!==-1) {
-                    if (type === 'string') {
+                    if (type === 'string' || type === 'date') {
                         result = data[obj.oldName];
                     } else if (type === 'number' || type === 'boolean'){
                         result = data[obj.oldName].toString();
@@ -135,6 +142,8 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 result = false;
             } else if (value.indexOf('string')!==-1) {
                 result = "";
+            } else if (value.indexOf('date')!==-1) {
+                result = undefined;
             }
             return result;
         };
@@ -142,11 +151,13 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
         functions.assign = function (data, schema) {
             var result = {};
             angular.forEach(schema, function(value) {
+                var r;
                 if (value.oldName) {
-                    result[value.name] = functions.transform(data, value);
+                    r = functions.transform(data, value);
                 } else {
-                    result[value.name] = functions.getEmptyValue(value.type);
+                    r = functions.getEmptyValue(value.type);
                 }
+                if (r !== undefined) result[value.name] = r;
             });
             return result;
         };
