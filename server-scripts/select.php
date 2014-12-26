@@ -1,8 +1,10 @@
 <?php
+include "config.php";
+
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
-$url = "http://192.168.2.106:8983/solr/iann/select?q=*%3A*&wt=json&indent=true&rows=2147483647";
+$url = "$old_solr_url/$old_collection_name/select?q=*%3A*&wt=json&indent=true&rows=2147483647";
  
 // Get cURL resource
 $curl = curl_init();
