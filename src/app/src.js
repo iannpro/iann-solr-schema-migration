@@ -151,6 +151,28 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return result;
         };
 
+        functions.fixedEncodeURIComponent = function(str) {
+            return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+                return '%' + c.charCodeAt(0).toString(16);
+            });
+        };
+
+        /**
+         * @return {string}
+         */
+        functions.CleanString = function (str) {
+            return str
+                .replace(/[\\]/g, '\\\\')
+                .replace(/[\/]/g, '\\/')
+                .replace(/[\b]/g, '\\b')
+                .replace(/[\f]/g, '\\f')
+                .replace(/[\n]/g, '\\n')
+                .replace(/[\r]/g, '\\r')
+                .replace(/[\t]/g, '\\t')
+                .replace(/[\"]/g, '\\"')
+                .replace(/\\'/g, "\\'");
+        };
+
         functions.assign = function (data, schema) {
             var result = {};
             angular.forEach(schema, function(value) {
@@ -160,7 +182,22 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 } else {
                     r = functions.getEmptyValue(value.type);
                 }
-                if (r !== undefined) result[value.name] = r;
+                if (r !== undefined && r.length>0) {
+                    if (Array.isArray(r)) {
+                        result[value.name] = [];
+                        angular.forEach(r, function (el) {
+                            result[value.name].push(
+                                functions.fixedEncodeURIComponent(
+                                    functions.CleanString(el)
+                                )
+                            );
+                        });
+                    } else {
+                        result[value.name] = functions.fixedEncodeURIComponent(
+                            functions.CleanString(r)
+                        );
+                    }
+                }
             });
             return result;
         };
