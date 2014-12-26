@@ -1,0 +1,24 @@
+.nav,
+.pagination,
+.carousel,
+.panel-title a {
+  cursor: pointer;
+}
+.prop {
+  margin-bottom: 5px;
+}
+.prop.empty {
+  border-color: silver;
+}
+.prop.conditional-unconsistent {
+  border-width: initial;
+  border-color: moccasin;
+}
+.prop.unconsistent {
+  border-width: initial;
+  border-color: salmon;
+}
+.prop.ok {
+  border-width: initial;
+  border-color: darkseagreen;
+}
