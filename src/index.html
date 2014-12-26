@@ -152,16 +152,39 @@
                 </div>
 
                 <div class="col-xs-8" style="background: whitesmoke; height: 500px;padding: 20px 0 20px 0;overflow-y: scroll;">
-                    <div class="col-xs-12" ng-repeat="newName in schema.New">
+
+                    <div class="col-xs-12">
+                        <div class="col-xs-4">
+                            <label>New properties</label>
+                        </div>
                         <div class="col-xs-5">
+                            <label>Old properties</label>
+                        </div>
+                        <div class="col-xs-3">
+                            <label>Merge prop.</label>
+                        </div>
+                    </div>
+
+                    <div class="col-xs-12" ng-repeat="newName in schema.New">
+                        <div class="col-xs-4">
                             <label>{{ newName.name }}</label>
                         </div>
-                        <div class="col-xs-7">
+                        <div class="col-xs-5">
                             <select ng-options="item.value as item.name for item in schema.Old"
                                     ng-model="newName.oldName"
                                     class="form-control prop"
-                                    ng-class="getClass(newName)">
-                                <option value="null">Select name</option>
+                                    ng-class="getClass(newName, 'oldName')">
+                                <option value="null">Select property</option>
+                            </select>
+                        </div>
+                        <div class="col-xs-3">
+                            <select ng-options="item.value as item.name for item in schema.Old"
+                                    ng-model="newName.oldName2"
+                                    class="form-control prop"
+                                    ng-class="getClass(newName, 'oldName2')"
+                                    ng-disabled="!newName.oldName"
+                                    ng-show="showSecondSelect(newName)">
+                                <option value="null">Second property</option>
                             </select>
                         </div>
                     </div>

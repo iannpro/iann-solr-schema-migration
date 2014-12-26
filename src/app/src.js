@@ -22,7 +22,9 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                             scope.fileread = loadEvent.target.result;
                         });
                     };
-                    reader.readAsText(changeEvent.target.files[0]);
+                    if (changeEvent.target.files.length>0) {
+                        reader.readAsText(changeEvent.target.files[0]);
+                    }
                 });
             }
         }
@@ -59,25 +61,25 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return text;
         };
 
-        functions.transform = function (data, obj) {
+        functions.transform = function (data, obj, name) {
 
-            if (data[obj.oldName]) {
+            if (data[obj[name]]) {
                 var result = undefined;
-                var type = functions.getType(data[obj.oldName]);
+                var type = functions.getType(data[obj[name]]);
 
                 // TODO: does not check values inside array if they correspond to target object
                 if (obj.type.indexOf('array')!==-1) {
                     if (type === 'array') {
-                        result = data[obj.oldName];
+                        result = data[obj[name]];
                     } else {
                         result = [];
-                        result.push(data[obj.oldName]);
+                        result.push(data[obj[name]]);
                     }
                 }
                 // TODO: does not transform other types to object (default = {})
                 else if (obj.type.indexOf('object')!==-1) {
                     if (type === 'object') {
-                        result = data[obj.oldName];
+                        result = data[obj[name]];
                     } else {
                         result = {};
                     }
@@ -85,18 +87,18 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 // TODO: does not transform other types to date (default 'undefined')
                 else if (obj.type.indexOf('date')!==-1) {
                     if (type === 'string'){
-                        if (data[obj.oldName]) result = data[obj.oldName];
+                        if (data[obj[name]]) result = data[obj[name]];
                     }
                     // else do nothing... result = undefined;
                 }
                 // TODO: does not transform objects and arrays to number (default = 0)
                 else if (obj.type.indexOf('number')!==-1) {
                     if (type === 'number') {
-                        result = data[obj.oldName];
+                        result = data[obj[name]];
                     } else if (type === 'string'){
-                        result = parseFloat(data[obj.oldName]);
+                        result = parseFloat(data[obj[name]]);
                     } else if (type === 'boolean') {
-                        result = (data[obj.oldName]>0)?1:0;
+                        result = (data[obj[name]]>0)?1:0;
                     } else { // date cannot be converted to number
                         result = 0;
                     }
@@ -104,20 +106,20 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 // TODO: does not transform objects, arrays and numbers to boolean (default = false)
                 else if (obj.type.indexOf('boolean')!==-1) {
                     if (type === 'boolean') {
-                        result = data[obj.oldName];
+                        result = data[obj[name]];
                     } else if (type === 'string'){
-                        result = (data[obj.oldName] === 'true');
+                        result = (data[obj[name]] === 'true');
                     } else {
                         result = false;
                     }
                 } else if (obj.type.indexOf('string')!==-1) {
                     if (type === 'string') {
-                        result = data[obj.oldName];
+                        result = data[obj[name]];
                     } else if (type === 'number' || type === 'boolean'){
-                        result = data[obj.oldName].toString();
+                        result = data[obj[name]].toString();
                     } else if (type === 'array' || type === 'object') {
                         result = "";
-                        angular.forEach(data[obj.oldName], function (el) {
+                        angular.forEach(data[obj[name]], function (el) {
                             result+= el + " ";
                         });
                     } else {
@@ -173,12 +175,21 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                 .replace(/\\'/g, "\\'");
         };
 
+
         functions.assign = function (data, schema) {
             var result = {};
             angular.forEach(schema, function(value) {
                 var r;
                 if (value.oldName) {
-                    r = functions.transform(data, value);
+                    r = functions.transform(data, value, 'oldName');
+                    if (value.oldName2) {
+                        var r2 = functions.transform(data, value, 'oldName2');
+                        if (Array.isArray(r2)) {
+                            r = r.concat(r2);
+                        } else {
+                            r.push(r2.toString());
+                        }
+                    }
                 } else {
                     r = functions.getEmptyValue(value.type);
                 }
@@ -254,6 +265,7 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
                     };
                     if (equalValues(oldlist, entry.value)) {
                         entry.oldName = name;
+
                     }
                     result.push(entry);
                 }
@@ -367,10 +379,10 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return result;
         };
 
-        var isUnconsistent = function (value) {
+        var isUnconsistent = function (value, name) {
             var result = false;
             angular.forEach($scope.schema.Old, function (el) {
-                if (value.oldName === el.name) {
+                if (value[name] === el.name) {
                     if (!arraysEqual(el.type, value.type)) {
                         result = true;
                     }
@@ -379,16 +391,24 @@ angular.module('iann-solr', ['ui.bootstrap', 'ngStorage', 'xml'])
             return result;
         };
 
-        $scope.getClass = function (value) {
-            if (!value.oldName) {
+        $scope.getClass = function (value, name) {
+            if (!value[name]) {
                 return "empty";
-            } else if (isUnconsistent(value)) {
+            } else if (isUnconsistent(value, name)) {
                 return "conditional-unconsistent";
             } else {
                 return "ok";
             }
         };
 
+        // for now enable just merges to array
+        // TODO: develop merge strategy for all types
+        $scope.showSecondSelect = function (value) {
+            if (value.type.indexOf('array')!==-1) {
+                return true;
+            }
+            return false;
+        };
 
 
 
