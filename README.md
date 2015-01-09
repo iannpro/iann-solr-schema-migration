@@ -1,7 +1,11 @@
 # iAnn Solr schema migration
 
-Simple to use UI to migrate solr indexed documents from old to new schema. It uses Ajax calls to read and update indexes.
-To use a script simply place compiled code from a `dist` folder to your http server dir.
+Simple to use UI for solr documents migration. It uses Ajax calls to read and update indexes.
+To use a script, there are two important things to do:
+* install php and place scripts from a `server-scripts` folder to your http server dir
+* simply place compiled code from a `dist` folder to your http server dir
+
+There are old and new schema examples provided in a folder `schema-examples`.
 
 ## Installation
 
